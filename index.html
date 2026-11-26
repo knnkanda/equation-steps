@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>方程式ステップ</title>
+    <style>
+      button { min-height: 2.25rem; }
+    </style>
+    <style>
+      :root {
+        --bg: #eef3f0;
+        --card: #ffffff;
+        --ink: #1c2a24;
+        --muted: #5a6d64;
+        --line: #d5e0da;
+        --teal: #0e7a5f;
+        --teal-dark: #095c47;
+        --teal-soft: #e2f2ec;
+        --amber: #e07b24;
+        --amber-soft: #fdf0dd;
+        --red: #bf3b2c;
+        --red-soft: #fbe9e6;
+        --green-soft: #e4f4e9;
+        --highlight: #ffe9a8;
+        --shadow: 0 2px 10px rgba(20, 50, 40, .08);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1512;
+          --card: #1a231e;
+          --ink: #e9f1ec;
+          --muted: #9db3a8;
+          --line: #33443b;
+          --teal: #35bd97;
+          --teal-dark: #7fd8bd;
+          --teal-soft: #17382d;
+          --amber: #f09a4a;
+          --amber-soft: #3d2c17;
+          --red: #f08374;
+          --red-soft: #42231f;
+          --green-soft: #1d3628;
+          --highlight: #6b5518;
+          --shadow: 0 2px 10px rgba(0,0,0,.4);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      .wrap { max-width: 640px; margin: 0 auto; padding: 16px 14px 40px; }
+      h1 { font-size: 1.55rem; margin: 6px 0 4px; letter-spacing: .02em; }
+      .lead { color: var(--muted); font-size: .95rem; line-height: 1.7; margin: 0 0 14px; }
+      .howto {
+        background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+        padding: 12px 16px; margin-bottom: 18px; box-shadow: var(--shadow);
+      }
+      .howto h2 { font-size: 1rem; margin: 0 0 6px; }
+      .howto ol { margin: 0; padding-left: 1.3em; line-height: 1.8; font-size: .92rem; }
+      .stage-list { display: flex; flex-direction: column; gap: 12px; }
+      .stage-card {
+        background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+        padding: 14px 16px; box-shadow: var(--shadow);
+        display: flex; flex-direction: column; gap: 6px;
+      }
+      .stage-card .s-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+      .stage-num {
+        background: var(--teal); color: #fff; font-weight: 700; border-radius: 6px;
+        padding: 2px 10px; font-size: .85rem; white-space: nowrap;
+      }
+      @media (prefers-color-scheme: dark) { .stage-num { color: #0c1712; } }
+      .stage-card h3 { margin: 0; font-size: 1.08rem; }
+      .stage-card p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.65; }
+      .stage-card .example {
+        font-family: Georgia, "Times New Roman", "Hiragino Mincho ProN", serif;
+        font-size: 1.05rem; background: var(--teal-soft); border-radius: 6px; padding: 6px 12px;
+      }
+      .start-btn {
+        align-self: flex-start; margin-top: 4px;
+        background: var(--teal); color: #fff; border: none; border-radius: 8px;
+        font-size: 1rem; font-weight: 700; padding: 10px 22px; cursor: pointer; min-height: 48px;
+      }
+      @media (prefers-color-scheme: dark) { .start-btn { color: #0c1712; } }
+      .start-btn:active { transform: scale(.98); }
+
+      /* ===== game screen ===== */
+      .stats {
+        display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+      }
+      .stat {
+        background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+        padding: 6px 12px; font-size: .9rem; box-shadow: var(--shadow);
+        display: flex; gap: 6px; align-items: baseline;
+      }
+      .stat b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+      .stat.combo b { color: var(--amber); }
+      .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+      .progress-label { font-size: .88rem; color: var(--muted); font-weight: 700; }
+      .dots { display: flex; gap: 6px; }
+      .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--teal); background: transparent; }
+      .dot.done { background: var(--teal); }
+      .dot.now { background: var(--amber); border-color: var(--amber); }
+      .quit-btn {
+        margin-left: auto; background: none; border: 1px solid var(--line); color: var(--muted);
+        border-radius: 8px; padding: 8px 14px; font-size: .88rem; cursor: pointer; min-height: 40px;
+      }
+      .stmt {
+        background: var(--amber-soft); border-radius: 8px; padding: 10px 14px;
+        font-size: .95rem; line-height: 1.7; margin-bottom: 12px; display: none;
+      }
+      .eq-card {
+        background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+        box-shadow: var(--shadow); padding: 22px 12px 18px; position: relative; overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .eq-display {
+        font-family: Georgia, "Times New Roman", "Hiragino Mincho ProN", serif;
+        font-size: clamp(1.9rem, 8.5vw, 3.1rem); text-align: center; line-height: 1.35;
+        letter-spacing: .01em; min-height: 1.4em; word-break: keep-all;
+      }
+      .eq-display .var { font-style: italic; }
+      .eq-display.pop { animation: eqpop .45s ease; }
+      @keyframes eqpop { 0% { transform: scale(1.06); } 100% { transform: scale(1); } }
+      .eq-display.flash { animation: eqflash 1s ease; }
+      @keyframes eqflash { 0% { background: var(--highlight); border-radius: 8px; } 100% { background: transparent; } }
+      .frac { display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; margin: 0 .1em; font-size: .58em; line-height: 1.2; }
+      .frac > span:first-child { border-bottom: 2px solid currentColor; padding: 0 .22em; }
+      .frac > span:last-child { padding: 0 .22em; }
+      .frac-sep { font-size: 0; line-height: 0; height: 0; flex: none; overflow: hidden; }
+      .anim-layer { position: absolute; inset: 0; pointer-events: none; }
+      .fly-chip {
+        position: absolute; top: 50%; left: 12%;
+        transform: translateY(-50%);
+        background: var(--amber); color: #fff; font-weight: 700;
+        font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.3rem, 6vw, 2rem);
+        padding: 8px 18px; border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,.25);
+        white-space: nowrap;
+      }
+      .fly-chip.flip { background: var(--teal); }
+      .burst-chip {
+        position: absolute; transform: translate(-50%, -50%);
+        background: var(--teal); color: #fff; font-weight: 700;
+        padding: 6px 14px; border-radius: 999px; font-size: 1.05rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,.22); white-space: nowrap;
+      }
+      @media (prefers-color-scheme: dark) { .burst-chip, .fly-chip { color: #10150f; } }
+      .step-note {
+        text-align: center; color: var(--teal-dark); font-weight: 700; font-size: .98rem;
+        min-height: 1.5em; margin: 4px 0 10px;
+      }
+      .ask { font-weight: 700; font-size: 1.02rem; margin: 12px 0 8px; }
+      .feedback {
+        display: none; border-radius: 8px; padding: 10px 14px; font-size: .95rem; line-height: 1.65; margin-bottom: 10px;
+      }
+      .feedback.bad { display: block; background: var(--red-soft); color: var(--red); border: 1px solid var(--red); }
+      .feedback.good { display: block; background: var(--green-soft); border: 1px solid var(--teal); }
+      .choices { display: flex; flex-direction: column; gap: 10px; }
+      .choice-btn {
+        background: var(--card); border: 2px solid var(--line); border-radius: 10px;
+        padding: 14px 16px; font-size: 1.05rem; text-align: left; cursor: pointer;
+        min-height: 58px; color: var(--ink); font-family: inherit; line-height: 1.5;
+        display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
+      }
+      .choice-btn .cnum {
+        flex: none; width: 30px; height: 30px; border-radius: 50%;
+        background: var(--teal-soft); color: var(--teal-dark); font-weight: 700;
+        display: flex; align-items: center; justify-content: center; font-size: .95rem;
+      }
+      .choice-btn:active { transform: scale(.99); }
+      .choice-btn.wrong { border-color: var(--red); opacity: .45; pointer-events: none; }
+      .choice-btn.right { border-color: var(--teal); background: var(--green-soft); }
+      .choice-btn:disabled { cursor: default; }
+      .choice-btn.shake { animation: shake .4s ease; }
+      @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
+      .score-float {
+        position: fixed; z-index: 60; font-weight: 800; color: var(--amber);
+        font-size: 1.3rem; pointer-events: none;
+      }
+      .history-wrap { margin-top: 26px; }
+      .history-wrap h2 { font-size: 1rem; margin: 0 0 8px; color: var(--muted); }
+      .history {
+        background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+        padding: 10px 16px; box-shadow: var(--shadow);
+      }
+      .h-line {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+        padding: 8px 0; border-bottom: 1px dashed var(--line); flex-wrap: wrap;
+      }
+      .h-line:last-child { border-bottom: none; }
+      .h-eq { font-family: Georgia, "Times New Roman", "Hiragino Mincho ProN", serif; font-size: 1.25rem; }
+      .h-eq .frac { font-size: .62em; }
+      .h-note { color: var(--teal-dark); font-size: .82rem; text-align: right; flex: 1; min-width: 130px; }
+      .h-line.latest .h-eq { font-weight: 700; }
+      .h-line.answer .h-eq { color: var(--amber); font-weight: 700; }
+
+      /* ===== modal ===== */
+      .modal-back {
+        position: fixed; inset: 0; background: rgba(10, 20, 16, .55);
+        display: none; align-items: center; justify-content: center; z-index: 50; padding: 18px;
+      }
+      .modal-back.show { display: flex; }
+      .modal {
+        background: var(--card); color: var(--ink); border-radius: 14px; padding: 26px 22px;
+        max-width: 420px; width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+        animation: modalin .3s ease;
+      }
+      @keyframes modalin { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .modal .big-ans {
+        font-family: Georgia, "Times New Roman", serif; font-size: 2.4rem; color: var(--amber);
+        font-weight: 700; margin: 8px 0;
+      }
+      .modal h2 { margin: 0 0 4px; font-size: 1.3rem; }
+      .modal p { color: var(--muted); line-height: 1.7; margin: 6px 0 14px; }
+      .modal .points { font-weight: 800; color: var(--teal-dark); font-size: 1.05rem; }
+      .modal-btn {
+        background: var(--teal); color: #fff; border: none; border-radius: 8px;
+        font-size: 1.05rem; font-weight: 700; padding: 12px 28px; cursor: pointer; min-height: 52px; width: 100%;
+      }
+      @media (prefers-color-scheme: dark) { .modal-btn { color: #0c1712; } }
+      .modal-btn.sub { background: none; color: var(--muted); border: 1px solid var(--line); margin-top: 10px; font-weight: 400; }
+      .hidden { display: none !important; }
+      @media (prefers-reduced-motion: reduce) {
+        .eq-display.pop, .eq-display.flash, .choice-btn.shake, .modal { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <!-- ===== スタート画面 ===== -->
+      <section id="startScreen">
+        <h1>方程式ステップ</h1>
+        <p class="lead">方程式を解く「次の一手」を選ぶゲームです。正しい手順を選んで、<span style="font-family:Georgia,serif"><i>x</i> = ○</span> の形までたどり着きましょう。まちがえても、理由が分かれば選び直せます。</p>
+        <div class="howto">
+          <h2>遊び方</h2>
+          <ol>
+            <li>方程式の下に出る3つの選択肢から、正しい「次の一手」を選びます。</li>
+            <li>移項では、項が ＝ を飛び越えて符号が変わる様子が大きく動きます。ここが見どころです。</li>
+            <li>正解が続くとコンボが伸びて得点アップ。まちがえるとコンボだけリセットされます。</li>
+            <li>各ステージ3問クリアで次のステージへ。どのステージからでも始められます。</li>
+          </ol>
+        </div>
+        <div class="stage-list" id="stageList"></div>
+      </section>
+
+      <!-- ===== ゲーム画面 ===== -->
+      <section id="gameScreen" class="hidden">
+        <div class="stats">
+          <div class="stat">スコア <b id="statScore">0</b></div>
+          <div class="stat combo">コンボ <b id="statCombo">0</b></div>
+          <div class="stat">解いた問題 <b id="statSolved">0</b></div>
+        </div>
+        <div class="progress-row">
+          <span class="progress-label" id="progressLabel"></span>
+          <div class="dots" id="dots"></div>
+          <button class="quit-btn" id="quitBtn" type="button">ステージをえらぶ</button>
+        </div>
+        <div class="stmt" id="stmtBox"></div>
+        <div class="eq-card" id="eqCard">
+          <div class="eq-display" id="eqDisplay"></div>
+          <div class="anim-layer" id="animLayer"></div>
+        </div>
+        <div class="step-note" id="stepNote"></div>
+        <div class="feedback" id="feedback"></div>
+        <p class="ask">次の一手は？</p>
+        <div class="choices" id="choices"></div>
+        <div class="history-wrap">
+          <h2>解き方の記録（教科書の解答のように読めます）</h2>
+          <div class="history" id="history"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===== クリア演出 ===== -->
+    <div class="modal-back" id="modalBack">
+      <div class="modal">
+        <h2 id="modalTitle">クリア！</h2>
+        <div class="big-ans" id="modalAns"></div>
+        <p id="modalText"></p>
+        <p class="points" id="modalPoints"></p>
+        <button class="modal-btn" id="modalBtn" type="button">次の問題へ</button>
+        <button class="modal-btn sub" id="modalSubBtn" type="button">ステージをえらぶ</button>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      /* ================= ヘルパー ================= */
+      var $ = function (id) { return document.getElementById(id); };
+      function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+      function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+      function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+      function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { var t = a % b; a = b; b = t; } return a || 1; }
+      function fm(n) { return n < 0 ? "−" + Math.abs(n) : "" + n; }         // 符号つき
+      function fa(n) { return "" + Math.abs(n); }                            // 絶対値
+      function fracHTML(n, d) {
+        var g = gcd(n, d); n /= g; d /= g;
+        if (d === 1) return fm(n);
+        var sign = (n < 0) !== (d < 0) ? "−" : "";
+        var an = Math.abs(n), ad = Math.abs(d);
+        /* 見た目は横線で分けた分数（.frac）。区切りの / は文字として読むとき用で、「83」のような連結読みを防ぐ */
+        return sign + '<span class="frac" role="img" aria-label="' + (sign ? "マイナス" : "") + ad + "分の" + an + '"><span>' + an + '</span><span class="frac-sep">/</span><span>' + ad + "</span></span>";
+      }
+      function numStr(v) { // 小数もきれいに
+        if (typeof v === "number" && Math.round(v) !== v) return (Math.round(v * 100) / 100).toString();
+        return "" + v;
+      }
+      /* 項の表現: {k:'v', c:係数, name:'x'} / {k:'vf', n,d,name} / {k:'n', v:数} / {k:'raw', s:'文字列', neg:false} */
+      function V(c, name) { return { k: "v", c: c, name: name || "x" }; }
+      function VF(n, d, name) { return { k: "vf", n: n, d: d, name: name || "x" }; }
+      function N(v) { return { k: "n", v: v }; }
+      function RAW(s, neg) { return { k: "raw", s: s, neg: !!neg }; }
+      function termSign(t) {
+        if (t.k === "v") return t.c < 0 ? -1 : 1;
+        if (t.k === "n") return t.v < 0 ? -1 : 1;
+        if (t.k === "raw") return t.neg ? -1 : 1;
+        return 1;
+      }
+      function termBody(t) {
+        if (t.k === "v") { var a = Math.abs(t.c); return (a === 1 ? "" : a) + '<span class="var">' + t.name + "</span>"; }
+        if (t.k === "vf") return fracHTML(t.n, t.d) + '<span class="var">' + t.name + "</span>";
+        if (t.k === "n") return numStr(Math.abs(t.v));
+        return t.s;
+      }
+      function joinTerms(terms) {
+        var out = "";
+        terms.forEach(function (t, i) {
+          var s = termSign(t), b = termBody(t);
+          if (i === 0) out += (s < 0 ? "−" : "") + b;
+          else out += (s < 0 ? " − " : " + ") + b;
+        });
+        return out;
+      }
+      function EQ(L, R) { return joinTerms(L) + " = " + joinTerms(R); }
+      var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      /* ================= ダミー選択肢の型 ================= */
+      function transposeDummies(correctLabel) {
+        return [
+          { label: correctLabel + "（符号は変えない）", reason: "移項すると符号が変わります。＝を飛び越えたら、+ は − に、− は + になるのがルールです。" },
+          { label: "両辺を整理する", reason: "まだ項が両辺に散らばっています。先に移項して、文字の項を左辺に、数の項を右辺に集めましょう。" }
+        ];
+      }
+      function organizeDummies(coef) {
+        return [
+          { label: "両辺を" + coef + "でわる", reason: "まだ ax = b の形になっていません。先に両辺の計算を整理してからわりましょう。順番を守るとミスが減ります。" },
+          { label: "両辺に" + coef + "をたす", reason: "たしても整理はできません。文字の項どうし、数の項どうしを計算してまとめましょう。" }
+        ];
+      }
+      function divideDummies(coef, other) {
+        if (!other || other === coef || other === 0 || Math.abs(other) === 1) other = coef + 2;
+        return [
+          { label: "両辺を" + fm(other) + "でわる", reason: "わるのは文字の係数 " + fm(coef) + " です。係数でない数でわってはいけません。" },
+          { label: "右辺だけを" + fm(coef) + "でわる", reason: "片方の辺だけわることはできません。等式は、両辺に同じことをして保ちます。" }
+        ];
+      }
+      function multiplyDummies(factor, kind) {
+        var wrong = kind === "dec" ? { label: "両辺に100をかける", reason: "小数第1位までしかないので、10をかければ整数になります。100では大きくなりすぎます。" }
+                                  : { label: "両辺に" + (factor + 1) + "をかける", reason: "かけるのは分母の最小公倍数 " + factor + " です。" };
+        return [
+          wrong,
+          { label: "文字の項だけに" + factor + "をかける", reason: "すべての項にかけます。数の項へのかけ忘れが、いちばん多いミスです！" }
+        ];
+      }
+
+      /* ================= ステージ1：基本の移項 ================= */
+      function genS1(q) {
+        if (q === 0) {
+          var b = rnd(2, 6), sol = rnd(2, 6), minus = Math.random() < 0.5;
+          var c = minus ? sol - b : sol + b;
+          if (minus && c < 1) { minus = false; c = sol + b; }
+          var fromTerm = minus ? "−" + b : "+" + b, toTerm = minus ? "+" + b : "−" + b;
+          var tLabel = (minus ? "−" + b : b) + "を右辺に移項する";
+          return {
+            eqHTML: EQ([V(1), N(minus ? -b : b)], [N(c)]),
+            answerHTML: "x = " + sol,
+            check: function () { return sol + (minus ? -b : b) === c; },
+            steps: [
+              { kind: "transpose", label: tLabel, eqHTML: EQ([V(1)], [N(c), N(minus ? b : -b)]),
+                note: "移項した項は符号が変わる！ " + fromTerm + " → " + toTerm,
+                anim: { type: "transpose", from: fromTerm, to: toTerm }, dummies: transposeDummies(tLabel) },
+              { kind: "organize", label: "右辺を整理する", eqHTML: EQ([V(1)], [N(sol)]),
+                note: c + (minus ? " + " : " − ") + b + " = " + sol,
+                anim: { type: "pulse" }, dummies: [
+                  { label: "両辺を" + b + "でわる", reason: "x の係数は1なので、わる必要はありません。右辺の計算で整理しましょう。" },
+                  { label: "両辺に" + b + "をかける", reason: "かけると数が大きくなるだけです。右辺は計算して整理しましょう。" }
+                ] }
+            ]
+          };
+        }
+        if (q === 1) {
+          var a = rnd(2, 4), s2 = rnd(2, 5), b2 = rnd(2, 6), minus2 = Math.random() < 0.5;
+          var val = a * s2, c2 = minus2 ? val - b2 : val + b2;
+          if (c2 < 1) { minus2 = false; c2 = val + b2; }
+          var t2 = (minus2 ? "−" + b2 : b2) + "を右辺に移項する";
+          return {
+            eqHTML: EQ([V(a), N(minus2 ? -b2 : b2)], [N(c2)]),
+            answerHTML: "x = " + s2,
+            check: function () { return a * s2 + (minus2 ? -b2 : b2) === c2; },
+            steps: [
+              { kind: "transpose", label: t2, eqHTML: EQ([V(a)], [N(c2), N(minus2 ? b2 : -b2)]),
+                note: "数の項を右辺へ。符号が変わった！",
+                anim: { type: "transpose", from: (minus2 ? "−" + b2 : "+" + b2), to: (minus2 ? "+" + b2 : "−" + b2) }, dummies: transposeDummies(t2) },
+              { kind: "organize", label: "両辺を整理する", eqHTML: EQ([V(a)], [N(val)]),
+                note: "ax = b の形になった",
+                anim: { type: "pulse" }, dummies: organizeDummies(a) },
+              { kind: "divide", label: "両辺を" + a + "でわる", eqHTML: EQ([V(1)], [N(s2)]),
+                note: "x の係数 " + a + " でわった",
+                anim: { type: "divide", by: a }, dummies: divideDummies(a, b2) }
+            ]
+          };
+        }
+        var cc = rnd(3, 5), s3 = rnd(2, 4), total = s3 * (cc - 1);
+        var b3 = rnd(2, total - 2), d3 = total - b3, coef = 1 - cc;
+        var t3 = b3 + "を右辺に、" + cc + "xを左辺に移項する";
+        return {
+          eqHTML: EQ([V(1), N(b3)], [V(cc), N(-d3)]),
+          answerHTML: "x = " + s3,
+          check: function () { return s3 + b3 === cc * s3 - d3; },
+          steps: [
+            { kind: "transpose", label: t3, eqHTML: EQ([V(1), V(-cc)], [N(-d3), N(-b3)]),
+              note: "2つの項が ＝ を飛び越えて、両方とも符号が変わった！",
+              anim: { type: "transpose", from: "+" + b3 + " と " + cc + "x", to: "−" + b3 + " と −" + cc + "x" }, dummies: transposeDummies(t3) },
+            { kind: "organize", label: "両辺を整理する", eqHTML: EQ([V(coef)], [N(-total)]),
+              note: "ax = b の形になった",
+              anim: { type: "pulse" }, dummies: organizeDummies(Math.abs(coef)) },
+            { kind: "divide", label: "両辺を" + fm(coef) + "でわる", eqHTML: EQ([V(1)], [N(s3)]),
+              note: "係数 " + fm(coef) + " でわった。マイナスどうしのわり算はプラス",
+              anim: { type: "divide", by: coef }, dummies: divideDummies(coef, cc) }
+          ]
+        };
+      }
+
+      /* ================= ステージ2：かっこ・小数 ================= */
+      function genS2(q) {
+        if (q === 0) {
+          var a = rnd(2, 3), b = rnd(1, 4), sol = rnd(2, 5), m = a * (sol + b), ab = a * b;
+          var t = ab + "を右辺に移項する";
+          return {
+            eqHTML: a + "( " + joinTerms([V(1), N(b)]) + " ) = " + m,
+            answerHTML: "x = " + sol,
+            check: function () { return a * (sol + b) === m; },
+            steps: [
+              { kind: "expand", label: "かっこをはずす", eqHTML: EQ([V(a), N(ab)], [N(m)]),
+                note: a + " を、かっこの中の両方の項にかけた",
+                anim: { type: "expand", factor: a }, dummies: [
+                  { label: "かっこをそのままはずす", reason: "外の数 " + a + " は、かっこの中の両方の項にかけます。片方だけではダメです。" },
+                  { label: "かっこの中だけを先に計算する", reason: "文字と数は別ものなので、中はこれ以上計算できません。外の数を分配しましょう。" }
+                ] },
+              { kind: "transpose", label: t, eqHTML: EQ([V(a)], [N(m), N(-ab)]),
+                note: "数の項を右辺へ。符号が変わった！",
+                anim: { type: "transpose", from: "+" + ab, to: "−" + ab }, dummies: transposeDummies(t) },
+              { kind: "organize", label: "両辺を整理する", eqHTML: EQ([V(a)], [N(a * sol)]),
+                note: "ax = b の形になった", anim: { type: "pulse" }, dummies: organizeDummies(a) },
+              { kind: "divide", label: "両辺を" + a + "でわる", eqHTML: EQ([V(1)], [N(sol)]),
+                note: "x の係数 " + a + " でわった", anim: { type: "divide", by: a }, dummies: divideDummies(a, b) }
+            ]
+          };
+        }
+        if (q === 1) {
+          var pr = pick([[3, 2], [2, 3], [4, 3], [5, 4], [2, 5]]);
+          var a2 = pr[0], b2 = pr[1], ab2 = a2 * b2, sol2 = -ab2 / (a2 - 1);
+          var t2 = ab2 + "を右辺に、xを左辺に移項する";
+          return {
+            eqHTML: a2 + "( " + joinTerms([V(1), N(b2)]) + " ) = " + joinTerms([V(1)]),
+            answerHTML: "x = " + fm(sol2),
+            check: function () { return a2 * (sol2 + b2) === sol2; },
+            steps: [
+              { kind: "expand", label: "かっこをはずす", eqHTML: EQ([V(a2), N(ab2)], [V(1)]),
+                note: a2 + " を、かっこの中の両方の項にかけた",
+                anim: { type: "expand", factor: a2 }, dummies: [
+                  { label: "かっこをそのままはずす", reason: "外の数 " + a2 + " は、かっこの中の両方の項にかけます。片方だけではダメです。" },
+                  { label: "かっこの中だけを先に計算する", reason: "文字と数は別ものなので、中はこれ以上計算できません。外の数を分配しましょう。" }
+                ] },
+              { kind: "transpose", label: t2, eqHTML: EQ([V(a2), V(-1)], [N(-ab2)]),
+                note: "文字の項は左辺へ、数の項は右辺へ。両方とも符号が変わった！",
+                anim: { type: "transpose", from: "+" + ab2 + " と x", to: "−" + ab2 + " と −x" }, dummies: transposeDummies(t2) },
+              { kind: "organize", label: "両辺を整理する", eqHTML: EQ([V(a2 - 1)], [N(-ab2)]),
+                note: "ax = b の形になった", anim: { type: "pulse" }, dummies: organizeDummies(a2 - 1) },
+              { kind: "divide", label: "両辺を" + (a2 - 1) + "でわる", eqHTML: EQ([V(1)], [N(sol2)]),
+                note: "x の係数 " + (a2 - 1) + " でわった", anim: { type: "divide", by: a2 - 1 }, dummies: divideDummies(a2 - 1, a2) }
+            ]
+          };
+        }
+        var pq = pick([[7, 2], [6, 3], [9, 4], [5, 2], [8, 3]]);
+        var P = pq[0], Q = pq[1], diff = P - Q, s3 = rnd(2, 4), r10 = diff * s3;
+        var rStr = r10 % 10 === 0 ? "" + (r10 / 10) : (Math.floor(r10 / 10) + "." + (r10 % 10));
+        var t3 = Q + "xを左辺に移項する";
+        return {
+          eqHTML: "0." + P + '<span class="var">x</span> = ' + "0." + Q + '<span class="var">x</span> + ' + rStr,
+          answerHTML: "x = " + s3,
+          check: function () { return P * s3 === Q * s3 + r10; },
+          steps: [
+            { kind: "multiply", label: "両辺に10をかける", eqHTML: EQ([V(P)], [V(Q), N(r10)]),
+              note: "すべての項に10をかけた。小数が整数になった！",
+              anim: { type: "multiply", factor: 10 }, dummies: multiplyDummies(10, "dec") },
+            { kind: "transpose", label: t3, eqHTML: EQ([V(P), V(-Q)], [N(r10)]),
+              note: "文字の項を左辺へ。符号が変わった！",
+              anim: { type: "transpose", from: "+" + Q + "x", to: "−" + Q + "x" }, dummies: transposeDummies(t3) },
+            { kind: "organize", label: "両辺を整理する", eqHTML: EQ([V(diff)], [N(r10)]),
+              note: "ax = b の形になった", anim: { type: "pulse" }, dummies: organizeDummies(diff) },
+            { kind: "divide", label: "両辺を" + diff + "でわる", eqHTML: EQ([V(1)], [N(s3)]),
+              note: "x の係数 " + diff + " でわった", anim: { type: "divide", by: diff }, dummies: divideDummies(diff, P) }
+          ]
+        };
+      }
+
+      /* ================= ステージ3：分数 ================= */
+      function genS3(q) {
+        if (q === 0) {
+          var d = pick([2, 3, 4]), k = rnd(2, 3), sol = d * k, b = rnd(2, 5), c = k + b;
+          var t = (d * b) + "を右辺に移項する";
+          return {
+            eqHTML: EQ([VF(1, d), N(b)], [N(c)]),
+            answerHTML: "x = " + sol,
+            check: function () { return sol + b * d === c * d; },
+            steps: [
+              { kind: "multiply", label: "両辺に分母の" + d + "をかける", eqHTML: EQ([V(1), N(d * b)], [N(d * c)]),
+                note: "すべての項に " + d + " をかけた。分数が消えた！",
+                anim: { type: "multiply", factor: d }, dummies: multiplyDummies(d, "frac") },
+              { kind: "transpose", label: t, eqHTML: EQ([V(1)], [N(d * c), N(-d * b)]),
+                note: "数の項を右辺へ。符号が変わった！",
+                anim: { type: "transpose", from: "+" + (d * b), to: "−" + (d * b) }, dummies: transposeDummies(t) },
+              { kind: "organize", label: "右辺を整理する", eqHTML: EQ([V(1)], [N(sol)]),
+                note: (d * c) + " − " + (d * b) + " = " + sol, anim: { type: "pulse" }, dummies: [
+                  { label: "両辺を" + d + "でわる", reason: "x の係数は1なので、わる必要はありません。右辺の計算で整理しましょう。" },
+                  { label: "両辺に" + d + "をかける", reason: "かけると数が大きくなるだけです。右辺は計算して整理しましょう。" }
+                ] }
+            ]
+          };
+        }
+        if (q === 1) {
+          var combos = [ [[1, 2], [2, 3]], [[1, 3], [1, 2]], [[3, 4], [1, 2]], [[1, 2], [3, 4]] ];
+          var cb = pick(combos), f1 = cb[0], f2 = cb[1];
+          var L = f1[1] * f2[1] / gcd(f1[1], f2[1]);
+          var A = f1[0] * L / f1[1], C = f2[0] * L / f2[1], diff = A - C;
+          var b1 = rnd(2, 4), d1 = rnd(2, 5); if (d1 === b1) d1 = b1 + 1;
+          var val = L * (d1 - b1), sol1 = val / diff;
+          var t1 = (L * b1) + "を右辺に、" + C + "xを左辺に移項する";
+          var steps = [
+            { kind: "multiply", label: "両辺に分母の最小公倍数" + L + "をかける", eqHTML: EQ([V(A), N(L * b1)], [V(C), N(L * d1)]),
+              note: "すべての項に " + L + " をかけた。分数が整数になった！",
+              anim: { type: "multiply", factor: L }, dummies: multiplyDummies(L, "frac") },
+            { kind: "transpose", label: t1, eqHTML: EQ([V(A), V(-C)], [N(L * d1), N(-L * b1)]),
+              note: "文字の項は左辺へ、数の項は右辺へ。符号の変化に注目！",
+              anim: { type: "transpose", from: "+" + (L * b1) + " と " + C + "x", to: "−" + (L * b1) + " と −" + C + "x" }, dummies: transposeDummies(t1) },
+            { kind: "organize", label: "両辺を整理する", eqHTML: diff === 1 ? EQ([V(1)], [N(val)]) : EQ([V(diff)], [N(val)]),
+              note: diff === 1 ? "整理したら x の形になった" : "ax = b の形になった", anim: { type: "pulse" }, dummies: organizeDummies(Math.abs(diff) === 1 ? 2 : Math.abs(diff)) }
+          ];
+          if (diff !== 1) steps.push({ kind: "divide", label: "両辺を" + fm(diff) + "でわる", eqHTML: EQ([V(1)], [N(sol1)]),
+            note: "係数 " + fm(diff) + " でわった", anim: { type: "divide", by: diff }, dummies: divideDummies(diff, L) });
+          return { eqHTML: EQ([VF(f1[0], f1[1]), N(b1)], [VF(f2[0], f2[1]), N(d1)]), answerHTML: "x = " + fm(sol1), check: function () { return A * sol1 + L * b1 === C * sol1 + L * d1; }, steps: steps };
+        }
+        var cm = pick([[3, 5, 4], [2, 3, 3], [1, 2, 4], [3, 4, 3], [2, 5, 6]]);
+        var n2 = cm[0], D = cm[1], c2 = cm[2], sol2 = c2 * D / (D - n2), dn = D - n2;
+        var t2 = n2 + "xを左辺に移項する";
+        var steps2 = [
+          { kind: "multiply", label: "両辺に分母の最小公倍数" + D + "をかける", eqHTML: EQ([V(D)], [V(n2), N(c2 * D)]),
+            note: "すべての項に " + D + " をかけた。分数が消えた！",
+            anim: { type: "multiply", factor: D }, dummies: multiplyDummies(D, "frac") },
+          { kind: "transpose", label: t2, eqHTML: EQ([V(D), V(-n2)], [N(c2 * D)]),
+            note: "文字の項を左辺へ。符号が変わった！",
+            anim: { type: "transpose", from: "+" + n2 + "x", to: "−" + n2 + "x" }, dummies: transposeDummies(t2) },
+          { kind: "organize", label: "両辺を整理する", eqHTML: dn === 1 ? EQ([V(1)], [N(c2 * D)]) : EQ([V(dn)], [N(c2 * D)]),
+            note: dn === 1 ? "整理したら x の形になった" : "ax = b の形になった", anim: { type: "pulse" }, dummies: organizeDummies(dn === 1 ? 2 : dn) }
+        ];
+        if (dn !== 1) steps2.push({ kind: "divide", label: "両辺を" + dn + "でわる", eqHTML: EQ([V(1)], [N(sol2)]),
+          note: "x の係数 " + dn + " でわった", anim: { type: "divide", by: dn }, dummies: divideDummies(dn, D) });
+        return { eqHTML: EQ([V(1)], [VF(n2, D), N(c2)]), answerHTML: "x = " + sol2, check: function () { return D * sol2 === n2 * sol2 + c2 * D; }, steps: steps2 };
+      }
+
+      /* ================= ステージ4：比例式 ================= */
+      function propDummies() {
+        return [
+          { label: "a : b = c : d → a×b = c×d を使う", reason: "組み合わせが違います。外どうし a×d と、内どうし b×c をかけます（ad = bc）。" },
+          { label: "比の値をたし算して方程式にする", reason: "比例式は ad = bc のかけ算に直して解きます。たし算ではありません。" }
+        ];
+      }
+      function genS4(q) {
+        if (q === 0) {
+          var sol = rnd(2, 4), b = rnd(3, 6), k = rnd(2, 3), c = sol * k, d = b * k;
+          return {
+            eqHTML: '<span class="var">x</span> : ' + b + " = " + c + " : " + d,
+            answerHTML: "x = " + sol,
+            check: function () { return sol * d === b * c; },
+            steps: [
+              { kind: "proportion", label: "比例式の性質 ad = bc を使う", eqHTML: '<span class="var">x</span> × ' + d + " = " + b + " × " + c,
+                note: "外どうし（x と " + d + "）、内どうし（" + b + " と " + c + "）をかけた",
+                anim: { type: "proportion" }, dummies: propDummies() },
+              { kind: "organize", label: "両辺を整理する", eqHTML: EQ([V(d)], [N(b * c)]),
+                note: "ax = b の形になった", anim: { type: "pulse" }, dummies: organizeDummies(d) },
+              { kind: "divide", label: "両辺を" + d + "でわる", eqHTML: EQ([V(1)], [N(sol)]),
+                note: "x の係数 " + d + " でわった", anim: { type: "divide", by: d }, dummies: divideDummies(d, b) }
+            ]
+          };
+        }
+        var fracAns = q === 2;
+        var a, b2, d2, sol2, ansHTML;
+        if (fracAns) {
+          var cm = pick([[8, 15, 3], [6, 10, 4], [9, 12, 2], [4, 9, 6], [10, 15, 2]]);
+          a = cm[0]; b2 = cm[1]; d2 = cm[2];
+          ansHTML = "x = " + fracHTML(a * d2, b2);
+        } else {
+          a = rnd(2, 4); var m = rnd(2, 3); b2 = rnd(3, 6); d2 = b2 * m; sol2 = a * m;
+          ansHTML = "x = " + sol2;
+        }
+        return {
+          eqHTML: a + " : " + b2 + ' = <span class="var">x</span> : ' + d2,
+          answerHTML: ansHTML,
+          check: function () {
+            if (!fracAns) return a * d2 === b2 * sol2;
+            var gg = gcd(a * d2, b2);
+            return a * d2 * (b2 / gg) === b2 * ((a * d2) / gg);
+          },
+          steps: [
+            { kind: "proportion", label: "比例式の性質 ad = bc を使う", eqHTML: a + " × " + d2 + " = " + b2 + ' × <span class="var">x</span>',
+              note: "外どうし（" + a + " と " + d2 + "）、内どうし（" + b2 + " と x）をかけた",
+              anim: { type: "proportion" }, dummies: propDummies() },
+            { kind: "organize", label: "計算して、左辺と右辺を入れかえる", eqHTML: EQ([V(b2)], [N(a * d2)]),
+              note: "x の項を左辺にそろえた。ax = b の形", anim: { type: "pulse" }, dummies: [
+                { label: "両辺を" + b2 + "でわる", reason: "まだ右辺のかけ算が計算できていません。先に計算して、x の項を左辺にそろえましょう。" },
+                { label: "左辺と右辺を入れかえずに整理する", reason: "x の項が右辺にあると解きにくい形です。入れかえて ax = b の形にしましょう。" }
+              ] },
+            { kind: "divide", label: "両辺を" + b2 + "でわる", eqHTML: fracAns ? '<span class="var">x</span> = ' + fracHTML(a * d2, b2) : EQ([V(1)], [N(sol2)]),
+              note: fracAns ? "約分すると分数の解になった" : "x の係数 " + b2 + " でわった",
+              anim: { type: "divide", by: b2 }, dummies: divideDummies(b2, d2) }
+          ]
+        };
+      }
+
+      /* ================= ステージ5：解から定数を求める ================= */
+      function genS5(q) {
+        var p = 3, r = 2, t = 4, qq = 2, aSol = -5, s = 6, found = false, tries = 0;
+        while (tries++ < 600 && !found) {
+          p = rnd(3, 5); r = rnd(1, 4); t = rnd(2, 5); qq = pick([1, 2, 2, 3]); aSol = rnd(-6, 6);
+          if (r === p || aSol === 0) continue;
+          s = r * t - p * t - qq * aSol;
+          if (s < 2 || s > 9) continue;
+          found = true;
+        }
+        if (!found) { p = 3; r = 2; t = 4; qq = 2; aSol = -5; s = 6; }
+        var pt = p * t, rtS = r * t - s, val = qq * aSol;
+        var steps = [
+          { kind: "substitute", label: "解 x = " + t + " を方程式に代入する",
+            eqHTML: joinTerms([RAW(p + "×" + t), V(qq, "a")]) + " = " + joinTerms([RAW(r + "×" + t), N(-s)]),
+            note: "x のところに " + t + " を入れた。a についての方程式ができた",
+            anim: { type: "substitute", val: t }, dummies: [
+              { label: "a = " + t + " として計算する", reason: "代入するのは、わかっている解 x の値です。a はこれから求める文字です。" },
+              { label: "解 x = " + t + " をそのまま答えにする", reason: "求めるのは a の値です。解は方程式に代入して使います。" }
+            ] },
+          { kind: "calc", label: "両辺を計算して整理する", eqHTML: EQ([N(pt), V(qq, "a")], [N(rtS)]),
+            note: "かけ算を計算した。a についての方程式", anim: { type: "pulse" }, dummies: [
+              { label: pt + "を右辺に移項する", reason: "まず代入したかけ算を計算して、数字だけの式にしましょう。それから移項です。" },
+              { label: "両辺を" + qq + "でわる", reason: "まだ a の式は整理できていません。先に計算と移項をしましょう。" }
+            ] },
+          { kind: "transpose", label: pt + "を右辺に移項する", eqHTML: EQ([V(qq, "a")], [N(rtS), N(-pt)]),
+            note: "数の項を右辺へ。符号が変わった！",
+            anim: { type: "transpose", from: "+" + pt, to: "−" + pt }, dummies: transposeDummies(pt + "を右辺に移項する") },
+          { kind: "organize", label: "右辺を整理する", eqHTML: EQ([V(qq, "a")], [N(val)]),
+            note: qq === 1 ? "整理したら a の形になった" : "ax = b と同じ形になった", anim: { type: "pulse" }, dummies: organizeDummies(qq === 1 ? 2 : qq) }
+        ];
+        if (qq > 1) steps.push({ kind: "divide", label: "両辺を" + qq + "でわる", eqHTML: EQ([V(1, "a")], [N(aSol)]),
+          note: "a の係数 " + qq + " でわった", anim: { type: "divide", by: qq }, dummies: divideDummies(qq, p) });
+        return {
+          stmt: "方程式 " + p + "x + " + (qq === 1 ? "a" : qq + "a") + " = " + r + "x − " + s + " の解が x = " + t + " のとき、a の値を求めなさい。",
+          eqHTML: EQ([V(p), V(qq, "a")], [V(r), N(-s)]),
+          answerHTML: "a = " + fm(aSol),
+          check: function () { return p * t + qq * aSol === r * t - s; },
+          steps: steps
+        };
+      }
+
+      var STAGES = [
+        { name: "基本の移項", desc: "文字の項を左辺に、数の項を右辺に移項して ax = b の形にし、最後に係数でわります。まずは1〜2手の問題から。", example: "2x − 5 = 3", gen: genS1 },
+        { name: "かっこ・小数", desc: "かっこは分配法則ではずし、小数は両辺に10をかけて整数にしてから、基本の解き方で解きます。", example: "3(x + 2) = x ／ 0.7x = 0.2x + 1", gen: genS2 },
+        { name: "分数", desc: "両辺に分母の最小公倍数をかけます。すべての項にかけるのがポイント。分数を整数に直してから解きます。", example: "½x + 3 = ⅔x + 4", gen: genS3 },
+        { name: "比例式", desc: "a : b = c : d なら ad = bc。比例式の性質でふつうの方程式に直してから解きます。答えが分数になることもあります。", example: "x : 5 = 6 : 15", gen: genS4 },
+        { name: "解から定数を求める", desc: "解が与えられたら、まず方程式に代入します。できあがった a の方程式を、いつもの手順で解きます。", example: "3x + 2a = 2x − 6（解は x = 4）", gen: genS5 }
+      ];
+    </script>
+    <script>
+      /* ================= ゲーム本体 ================= */
+      var G = {
+        stage: 1, qInStage: 0, problem: null, stepIdx: 0,
+        score: 0, combo: 0, solved: 0, busy: false, choices: [], probPoints: 0
+      };
+      var stageListEl = $("stageList");
+      STAGES.forEach(function (st, i) {
+        var card = document.createElement("div");
+        card.className = "stage-card";
+        card.innerHTML = '<div class="s-head"><span class="stage-num">ステージ ' + (i + 1) + '</span><h3>' + st.name + "</h3></div>" +
+          "<p>" + st.desc + '</p><div class="example">' + st.example + "</div>";
+        var btn = document.createElement("button");
+        btn.className = "start-btn"; btn.type = "button"; btn.textContent = "このステージから始める";
+        btn.addEventListener("click", function () { startStage(i + 1); });
+        card.appendChild(btn);
+        stageListEl.appendChild(card);
+      });
+
+      function startStage(n) {
+        G.stage = n; G.qInStage = 0;
+        $("startScreen").classList.add("hidden");
+        $("gameScreen").classList.remove("hidden");
+        nextProblem();
+        window.scrollTo(0, 0);
+      }
+      function showStart() {
+        $("modalBack").classList.remove("show");
+        $("gameScreen").classList.add("hidden");
+        $("startScreen").classList.remove("hidden");
+        window.scrollTo(0, 0);
+      }
+      $("quitBtn").addEventListener("click", showStart);
+      $("modalSubBtn").addEventListener("click", showStart);
+
+      function updateStats() {
+        $("statScore").textContent = G.score;
+        $("statCombo").textContent = G.combo;
+        $("statSolved").textContent = G.solved;
+        $("progressLabel").textContent = "ステージ " + G.stage + "：" + STAGES[G.stage - 1].name + "（" + (G.qInStage + 1) + "問目 / 3問）";
+        var dots = $("dots"); dots.innerHTML = "";
+        for (var i = 0; i < 3; i++) {
+          var d = document.createElement("span");
+          d.className = "dot" + (i < G.qInStage ? " done" : i === G.qInStage ? " now" : "");
+          dots.appendChild(d);
+        }
+      }
+
+      function genVerified() {
+        var gen = STAGES[G.stage - 1].gen, p = null, i;
+        for (i = 0; i < 60; i++) {
+          p = gen(G.qInStage);
+          if (!p.check || p.check()) return p; // 検算（解を元の方程式・比例式に代入）が通った問題だけ出す
+        }
+        return p;
+      }
+      function nextProblem() {
+        G.problem = genVerified();
+        G.stepIdx = 0; G.probPoints = 0; G.busy = false;
+        var stmt = $("stmtBox");
+        if (G.problem.stmt) { stmt.style.display = "block"; stmt.textContent = G.problem.stmt; }
+        else stmt.style.display = "none";
+        $("eqDisplay").innerHTML = G.problem.eqHTML;
+        $("stepNote").textContent = "";
+        setFeedback("", "");
+        renderHistory();
+        renderChoices();
+        updateStats();
+      }
+
+      function renderHistory() {
+        var h = $("history"); h.innerHTML = "";
+        var lines = [{ eq: G.problem.eqHTML, note: "問題" }];
+        G.problem.steps.slice(0, G.stepIdx).forEach(function (st) { lines.push({ eq: st.eqHTML, note: st.label }); });
+        lines.forEach(function (ln, i) {
+          var row = document.createElement("div");
+          row.className = "h-line" + (i === lines.length - 1 ? " latest" : "") + (G.stepIdx >= G.problem.steps.length && i === lines.length - 1 ? " answer" : "");
+          row.innerHTML = '<span class="h-eq">' + ln.eq + '</span><span class="h-note">' + ln.note + "</span>";
+          h.appendChild(row);
+        });
+      }
+
+      function setFeedback(text, cls) {
+        var f = $("feedback");
+        f.className = "feedback" + (cls ? " " + cls : "");
+        f.innerHTML = text;
+        if (!cls) f.style.display = "none"; else f.style.display = "block";
+      }
+
+      function renderChoices() {
+        var step = G.problem.steps[G.stepIdx];
+        var items = [{ label: step.label, correct: true }];
+        (step.dummies || []).slice(0, 2).forEach(function (d) { items.push({ label: d.label, correct: false, reason: d.reason }); });
+        G.choices = shuffle(items);
+        var box = $("choices"); box.innerHTML = "";
+        G.choices.forEach(function (ch, i) {
+          var btn = document.createElement("button");
+          btn.className = "choice-btn"; btn.type = "button";
+          btn.innerHTML = '<span class="cnum">' + (i + 1) + '</span><span>' + ch.label + "</span>";
+          btn.addEventListener("click", function () { choose(ch, btn); });
+          box.appendChild(btn);
+        });
+      }
+
+      function choose(ch, btn) {
+        if (G.busy) return;
+        var step = G.problem.steps[G.stepIdx];
+        if (!ch.correct) {
+          G.combo = 0; updateStats();
+          btn.classList.add("wrong", "shake");
+          setFeedback("✕ ちがいます。" + (ch.reason || "もう一度考えてみましょう。"), "bad");
+          $("stepNote").textContent = "";
+          return;
+        }
+        G.busy = true;
+        btn.classList.add("right");
+        Array.prototype.forEach.call(document.querySelectorAll(".choice-btn"), function (b) { b.disabled = true; });
+        setFeedback("", "");
+        playAnim(step.anim, function () {
+          var pts = 100 + G.combo * 20;
+          G.combo++; G.score += pts; G.probPoints += pts;
+          floatScore(pts);
+          G.stepIdx++;
+          $("eqDisplay").innerHTML = step.eqHTML;
+          $("eqDisplay").classList.remove("pop", "flash"); void $("eqDisplay").offsetWidth;
+          $("eqDisplay").classList.add("pop", "flash");
+          $("stepNote").textContent = step.note || "";
+          renderHistory();
+          updateStats();
+          G.busy = false;
+          if (G.stepIdx >= G.problem.steps.length) problemCleared();
+          else renderChoices();
+        });
+      }
+
+      function floatScore(pts) {
+        if (reducedMotion) return;
+        var el = document.createElement("div");
+        el.className = "score-float"; el.textContent = "+" + pts;
+        el.style.left = "50%"; el.style.top = "38%";
+        document.body.appendChild(el);
+        el.animate([
+          { transform: "translate(-50%,0)", opacity: 1 },
+          { transform: "translate(-50%,-56px)", opacity: 0 }
+        ], { duration: 900, easing: "ease-out" }).onfinish = function () { el.remove(); };
+      }
+
+      function playAnim(anim, cb) {
+        var layer = $("animLayer");
+        layer.innerHTML = "";
+        if (!anim || reducedMotion) { setTimeout(cb, reducedMotion ? 60 : 200); return; }
+        if (anim.type === "transpose") {
+          var chip = document.createElement("div");
+          chip.className = "fly-chip"; chip.textContent = anim.from;
+          layer.appendChild(chip);
+          var a = chip.animate([
+            { left: "6%", transform: "translateY(-50%) rotate(0deg) scale(1)" },
+            { left: "42%", transform: "translateY(-110%) rotate(-8deg) scale(1.25)", offset: 0.5 },
+            { left: "72%", transform: "translateY(-50%) rotate(0deg) scale(1.1)" }
+          ], { duration: 1000, easing: "ease-in-out", fill: "forwards" });
+          setTimeout(function () { chip.textContent = anim.to; chip.classList.add("flip"); }, 500);
+          a.onfinish = function () { setTimeout(function () { layer.innerHTML = ""; cb(); }, 250); };
+          return;
+        }
+        if (anim.type === "multiply" || anim.type === "divide" || anim.type === "expand" || anim.type === "proportion" || anim.type === "substitute") {
+          var texts = [];
+          if (anim.type === "multiply") texts = ["×" + anim.factor, "×" + anim.factor, "×" + anim.factor, "すべての項に！"];
+          if (anim.type === "divide") texts = ["÷" + fm(anim.by), "両辺に", "÷" + fm(anim.by)];
+          if (anim.type === "expand") texts = [anim.factor + " を", "両方の項に", "かける！"];
+          if (anim.type === "proportion") texts = ["外×外", "＝", "内×内", "ad = bc"];
+          if (anim.type === "substitute") texts = ["x に", anim.val + " を", "代入！"];
+          var done = 0;
+          texts.forEach(function (tx, i) {
+            var chip = document.createElement("div");
+            chip.className = "burst-chip"; chip.textContent = tx;
+            chip.style.left = (18 + i * (64 / Math.max(texts.length - 1, 1))) + "%";
+            chip.style.top = "50%";
+            layer.appendChild(chip);
+            chip.animate([
+              { transform: "translate(-50%,-50%) scale(.4)", opacity: 0 },
+              { transform: "translate(-50%,-50%) scale(1.15)", opacity: 1, offset: 0.35 },
+              { transform: "translate(-50%,-50%) scale(1)", opacity: 1 }
+            ], { duration: 480, delay: i * 170, easing: "ease-out", fill: "backwards" }).onfinish = function () {
+              if (++done === texts.length) setTimeout(function () { layer.innerHTML = ""; cb(); }, 350);
+            };
+          });
+          return;
+        }
+        $("eqDisplay").classList.remove("pop"); void $("eqDisplay").offsetWidth; $("eqDisplay").classList.add("pop");
+        setTimeout(cb, 350);
+      }
+
+      function problemCleared() {
+        G.solved++; G.qInStage++;
+        updateStats(); renderHistory();
+        var isStageEnd = G.qInStage >= 3;
+        var isFinal = isStageEnd && G.stage >= 5;
+        $("modalTitle").textContent = isFinal ? "全ステージ制覇！" : isStageEnd ? "ステージ " + G.stage + " クリア！" : "クリア！";
+        $("modalAns").innerHTML = G.problem.answerHTML;
+        $("modalText").textContent = isFinal
+          ? "おつかれさまでした。方程式の解き方の手順がひと通り身につきました。何度も遊んで、手順を感覚で覚えましょう。"
+          : isStageEnd
+            ? "3問解けました。次のステージ「" + STAGES[G.stage].name + "」に進みます。"
+            : "正しい手順で解けました。この調子で次へ進みましょう。";
+        $("modalPoints").textContent = "この問題で +" + G.probPoints + " 点（合計 " + G.score + " 点）";
+        $("modalBtn").textContent = isFinal ? "ステージをえらぶ" : isStageEnd ? "次のステージへ" : "次の問題へ";
+        $("modalBack").classList.add("show");
+        $("modalBtn").onclick = function () {
+          $("modalBack").classList.remove("show");
+          if (isFinal) { showStart(); return; }
+          if (isStageEnd) { G.stage++; G.qInStage = 0; }
+          nextProblem();
+          window.scrollTo(0, 0);
+        };
+      }
+    </script>
+  </body>
+</html>
